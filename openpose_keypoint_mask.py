@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import math
 from PIL import Image, ImageDraw
+from collections.abc import Mapping
 from nodes import MAX_RESOLUTION
 
 def draw_square(draw, center_x, center_y, size, aspect_ratio, color):
@@ -285,6 +286,8 @@ class OpenPoseKeyPointMask:
             if element.isdigit():
                 points_we_want.append(int(element))
         full_masks = []
+        if isinstance(pose_keypoint, Mapping):
+            pose_keypoint = [pose_keypoint]
         for pose in pose_keypoint:
             out_img = Image.new("RGB", (image_width, image_height))
             for person_number in range(len(pose["people"])):
