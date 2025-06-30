@@ -107,14 +107,28 @@ class OpenPoseKeyPointMask:
             if p[1]>max_y:
                 max_y=p[1]
         return (min_x, min_y, max_x, max_y)
-    def get_keypoint_from_list(self,list, item,pose):
+    def get_keypoint_from_list(self,point_list, item,pose):
+        for point in point_list:
+            if isinstance(point, list):
+                return self.get_keypoint_from_list_openpose(point_list,item,pose)
         try:
             idx_x = item*3
             idx_y = idx_x + 1
             idx_conf = idx_y + 1
-            x=list[idx_x]
-            y=list[idx_y]
-            z=list[idx_conf]
+            x=point_list[idx_x]
+            y=point_list[idx_y]
+            z=point_list[idx_conf]
+            if x >= 1.0 or y >= 1.0:
+                x=x/pose["canvas_width"]
+                y=y/pose["canvas_height"]
+            return (x,y,z)
+        except:
+            return (0,0,0)
+    def get_keypoint_from_list_openpose(self,point_list, item,pose):
+        try:
+            x=point_list[item][0]
+            y=point_list[item][1]
+            z=point_list[item][2]
             if x >= 1.0 or y >= 1.0:
                 x=x/pose["canvas_width"]
                 y=y/pose["canvas_height"]
@@ -134,7 +148,7 @@ class OpenPoseKeyPointMask:
             for i in range(0,points_count,1):
                 points_we_want.append(i)
         for element in points_we_want:
-            (x,y,z) = self.get_keypoint_from_list(pose["people"][person_number][label], element,pose)
+            (x,y,z) = self.get_keypoint_from_list(pose["people"][person_number][label], element,pose)      
             if z != 0.0:
                 points.append((x*canvas_width,y*canvas_height))
         
@@ -175,7 +189,7 @@ class OpenPoseKeyPointMask:
             for i in range(0,points_count,1):
                 points_we_want.append(i)
         for element in points_we_want:
-            (x,y,z) = self.get_keypoint_from_list(pose["people"][person_number][label], element,pose)
+            (x,y,z) = self.get_keypoint_from_list(pose["people"][person_number][label], element,pose)      
             if z != 0.0:
                 points.append((x,y))
         if len(points) > 0:
