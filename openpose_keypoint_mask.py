@@ -108,9 +108,9 @@ class OpenPoseKeyPointMask:
                 max_y=p[1]
         return (min_x, min_y, max_x, max_y)
     def get_keypoint_from_list(self,point_list, item,pose):
-        for point in point_list:
-            if isinstance(point, list):
-                return self.get_keypoint_from_list_openpose(point_list,item,pose)
+        is_openpose = self.is_openpose_list(point_list)
+        if is_openpose:
+            return self.get_keypoint_from_list_openpose(point_list,item,pose)
         try:
             idx_x = item*3
             idx_y = idx_x + 1
@@ -126,29 +126,43 @@ class OpenPoseKeyPointMask:
             return (0,0,0)
     def get_keypoint_from_list_openpose(self,point_list, item,pose):
         try:
-            x=point_list[item][0]
-            y=point_list[item][1]
-            z=point_list[item][2]
+            x=point_list[0][item][0]
+            y=point_list[0][item][1]
+            z=point_list[0][item][2]
             if x >= 1.0 or y >= 1.0:
                 x=x/pose["canvas_width"]
                 y=y/pose["canvas_height"]
             return (x,y,z)
         except:
             return (0,0,0)
+    def is_openpose_list(self, point_list):
+        for point in point_list:
+            if isinstance(point, list):
+                return True
+            else:
+                return False
+        return False
+        
     def box_keypoint_rotate(self, pose, points_we_want, use_all_points, person_number=0, label = "pose_keypoints_2d"):
         if person_number >= len(pose["people"]):
             return (0,0,0,0,0)
         min_size=10
         canvas_width =pose["canvas_width"]
         canvas_height =pose["canvas_height"]
-        points=[]       
+        points=[]      
+        is_openpose = False 
+        point_list = pose["people"][person_number][label]
         if use_all_points==True:
             points_we_want.clear()
-            points_count = len(pose["people"][person_number][label])
-            for i in range(0,points_count,1):
+            is_openpose = self.is_openpose_list(point_list)
+            if is_openpose:
+                points_count = len(point_list[0])
+            else:
+                points_count = int(len(point_list)/3)
+            for i in range(points_count):
                 points_we_want.append(i)
         for element in points_we_want:
-            (x,y,z) = self.get_keypoint_from_list(pose["people"][person_number][label], element,pose)      
+            (x,y,z) = self.get_keypoint_from_list(point_list, element,pose)   
             if z != 0.0:
                 points.append((x*canvas_width,y*canvas_height))
         
@@ -183,13 +197,19 @@ class OpenPoseKeyPointMask:
         if person_number >= len(pose["people"]):
             return (0,0,0,0)
         points=[]
+        is_openpose = False 
+        point_list = pose["people"][person_number][label]
         if use_all_points==True:
             points_we_want.clear()
-            points_count = len(pose["people"][person_number][label])
-            for i in range(0,points_count,1):
+            is_openpose = self.is_openpose_list(point_list)
+            if is_openpose:
+                points_count = len(point_list[0])
+            else:
+                points_count = len(point_list)/3
+            for i in range(points_count):
                 points_we_want.append(i)
         for element in points_we_want:
-            (x,y,z) = self.get_keypoint_from_list(pose["people"][person_number][label], element,pose)      
+            (x,y,z) = self.get_keypoint_from_list(point_list, element,pose)  
             if z != 0.0:
                 points.append((x,y))
         if len(points) > 0:
@@ -252,11 +272,19 @@ class OpenPoseKeyPointMask:
     def get_back_hide_with(self,pose,person_number=0):
         if person_number >= len(pose["people"]):
             return 0
-        (x,y,z) = self.get_keypoint_from_list(pose["people"][person_number]["pose_keypoints_2d"], 8,pose)
-        (x2,y2,z2) = self.get_keypoint_from_list(pose["people"][person_number]["pose_keypoints_2d"], 11,pose)
-        if z != 0.0 and z2 != 0.0:
-            return x2-x
-        return 0
+        point_list = pose["people"][person_number]["pose_keypoints_2d"]
+        if self.is_openpose_list(point_list):
+            (x,y,z) = self.get_keypoint_from_list(point_list, 9,pose)
+            (x2,y2,z2) = self.get_keypoint_from_list(point_list, 12,pose)
+            if z != 0.0 and z2 != 0.0:
+                return x2-x
+            return 0
+        else:
+            (x,y,z) = self.get_keypoint_from_list(point_list, 8,pose)
+            (x2,y2,z2) = self.get_keypoint_from_list(point_list, 11,pose)
+            if z != 0.0 and z2 != 0.0:
+                return x2-x
+            return 0
     def make_shape(self, width, height, rotation,shape,alpha=1.0,x_offset=0, y_offset=0, zoom=1.0,):
         bg_color = (0,0,0)
         shape_color = (int(255*alpha),int(255*alpha),int(255*alpha))
@@ -301,13 +329,13 @@ class OpenPoseKeyPointMask:
                 points_we_want.append(int(element))
         full_masks = []
         if isinstance(pose_keypoint, Mapping):
-            pose_keypoint = [pose_keypoint]
+            pose_keypoint = [pose_keypoint] 
         for pose in pose_keypoint:
             out_img = Image.new("RGB", (image_width, image_height))
             for person_number in range(len(pose["people"])):
                 if person_index>=0 and person_index!=person_number:
                     continue
-                if mode == "torso":
+                if mode == "torso": # do not support openpose 25 keypoints
                     box=self.box_keypoint(pose, [1], person_number)
                     point_width=self.get_torso_width(pose,person_number)
                     point_height=self.get_torso_height(pose,person_number)
