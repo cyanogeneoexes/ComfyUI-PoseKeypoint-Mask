@@ -146,12 +146,14 @@ class OpenPoseKeyPointMask:
     def box_keypoint_rotate(self, pose, points_we_want, use_all_points, person_number=0, label = "pose_keypoints_2d"):
         if person_number >= len(pose["people"]):
             return (0,0,0,0,0)
+        if not label in pose["people"][person_number]:
+            return (0,0,0,0,0)
         min_size=10
         canvas_width =pose["canvas_width"]
         canvas_height =pose["canvas_height"]
         points=[]      
         is_openpose = False 
-        point_list = pose["people"][person_number][label]
+        point_list = pose["people"][person_number][label]        
         if use_all_points==True:
             points_we_want.clear()
             is_openpose = self.is_openpose_list(point_list)
@@ -196,6 +198,8 @@ class OpenPoseKeyPointMask:
     def box_keypoint(self, pose, points_we_want, use_all_points, person_number=0, label = "pose_keypoints_2d"):
         if person_number >= len(pose["people"]):
             return (0,0,0,0)
+        if not label in pose["people"][person_number]:
+            return (0,0,0,0,0)
         points=[]
         is_openpose = False 
         point_list = pose["people"][person_number][label]
